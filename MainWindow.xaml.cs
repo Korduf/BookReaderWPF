@@ -33,9 +33,11 @@ namespace DeepReadApp
         private List<double> _listMarkZoom = new List<double>();
         private List<int> _listMarkPage = new List<int>();
         private TextBox _textBoxDelMark = new TextBox();
+        private WrapPanel _wrapPanel = new WrapPanel();
         private StackPanel _panel = new StackPanel();
         private Button _buttonDelMark = new Button();
         private Window _windowDelMark = new Window();
+        private Window _windowLibrary = new Window();
         private bool IsOpen { get; set; } = false;
         private string Extension { get; set; }
         private string FilePath { get; set; }
@@ -51,6 +53,7 @@ namespace DeepReadApp
         {
             LoadBookLibrary();
             RemoveMarkWindowInitialize();
+            LibraryWindowInitialize();
         }
 
         public void ExitApp(object sender, EventArgs e)
@@ -87,10 +90,16 @@ namespace DeepReadApp
             }
             if (find == true) return;
             _pathBookLibrary.Add(FilePath);
-            var menuItem = new MenuItem();
-            menuItem.Header = System.IO.Path.GetFileName(FilePath);
-            menuItem.Click += ClickBookLibrary;
-            MenuLibrary.Items.Add(menuItem);
+            ImageBrush imageBrush = new ImageBrush(new BitmapImage(
+                new Uri(@"redbook.jpg", UriKind.Relative)));
+            var button = new Button()
+            {
+                Height = 140, Width = 116.8, Background = imageBrush, FontSize = 7,
+                VerticalContentAlignment = VerticalAlignment.Center
+            };
+            button.Content = System.IO.Path.GetFileName(FilePath);
+            button.Click += ClickBookLibrary;
+            _wrapPanel.Children.Add(button);
         }
 
         private void LoadBookLibrary()
@@ -102,10 +111,16 @@ namespace DeepReadApp
             }
             for (var i = 0; i < maxIndexItem; i++)
             {
-                var menuItem = new MenuItem();
-                menuItem.Header = System.IO.Path.GetFileName(_iniManager.GetPrivateString("Library", Convert.ToString(i)));
-                menuItem.Click += ClickBookLibrary;
-                MenuLibrary.Items.Add(menuItem);
+                ImageBrush imageBrush = new ImageBrush(new BitmapImage(
+                    new Uri(@"redbook.jpg", UriKind.Relative)));
+                Button button = new Button()
+                {
+                    Height = 140, Width = 116.8, Background = imageBrush, FontSize = 7,
+                    VerticalContentAlignment = VerticalAlignment.Center
+                };
+                button.Content = System.IO.Path.GetFileName(_iniManager.GetPrivateString("Library", Convert.ToString(i)));
+                button.Click += ClickBookLibrary;
+                _wrapPanel.Children.Add(button);
                 _pathBookLibrary.Add(_iniManager.GetPrivateString("Library", Convert.ToString(i)));
             }
         }
@@ -122,18 +137,23 @@ namespace DeepReadApp
         {
             SavePositionInBook_INI();
             SaveMark();
-            var senderMenuItem = (MenuItem)sender;
+            bool find = false;
+            var senderButton = (Button)sender;
             for (var i = 0; i < _pathBookLibrary.Count; i++)
             {
                 var temp = System.IO.Path.GetFileName(_pathBookLibrary[i]);
-                if (temp != senderMenuItem.Header.ToString()) continue;
+                if (temp != Convert.ToString(senderButton.Content)) continue;
+                find = true;
                 FilePath = _pathBookLibrary[i];
             }
+
+            if (find == false) return;
             Extension = System.IO.Path.GetExtension(FilePath);
             FileName = System.IO.Path.GetFileName(FilePath);
             ChapterExpander.Header = FileName;
             IsOpen = true;
             LoadBookFromFile();
+            _windowLibrary.Hide();
             RestorePositionInBook_INI();
         }
         
@@ -149,6 +169,7 @@ namespace DeepReadApp
         private void RestorePositionInBook_INI()
         {
             if (!IsOpen) return;
+            if (_iniManager.GetPrivateString("CurrentPosition", FileName + "/Page") == "") return;
             if (!FlowView.CanGoToPage(
                     Convert.ToInt32(_iniManager.GetPrivateString("CurrentPosition", FileName + "/Page")))) return;
             if (MessageBox.Show("Recovery progress reading?", "Attention!", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
@@ -207,7 +228,16 @@ namespace DeepReadApp
         {
             _listMarkZoom.Add(FlowView.Zoom);
             _listMarkPage.Add(FlowView.MasterPageNumber);
-            Button button = new Button() { Content = Convert.ToString(_panel.Children.Count + " : " + FlowView.MasterPageNumber), Tag = _panel.Children.Count};
+            Button button = new Button() { Content = Convert.ToString(_listMarkPage.Count + " Bookmark, " + Convert.ToString(FlowView.MasterPageNumber) + " Page"), Tag = _panel.Children.Count};
+            
+            ContextMenu contextMenu = new ContextMenu();
+            MenuItem menuItem = new MenuItem();
+            button.ContextMenu = contextMenu;
+            menuItem.Header = "Delete";
+            menuItem.Tag = Convert.ToString(_panel.Children.Count);
+            menuItem.Click += RemoveMarkButton;
+            contextMenu.Items.Add(menuItem);
+            
             button.Click += ClickMark;
             _panel.Children.Add(button);
             ChapterExpander.Content = _panel;
@@ -250,10 +280,26 @@ namespace DeepReadApp
             _windowDelMark.Closing += RemoveMarkWindowClose;
         }
 
+        private void LibraryWindowInitialize()
+        {
+            _windowLibrary.Height = 500;
+            _windowLibrary.Width = 500;
+            _windowLibrary.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+            _windowLibrary.Background = Brushes.SlateGray;
+            _windowLibrary.ResizeMode = ResizeMode.NoResize;
+            _windowLibrary.Closing += LibraryWindowClose;
+        }
+
         private void RemoveMarkWindowClose(object sender, CancelEventArgs e)
         {
             e.Cancel = true;
             _windowDelMark.Hide();
+        }
+
+        private void LibraryWindowClose(object sender, CancelEventArgs e)
+        {
+            e.Cancel = true;
+            _windowLibrary.Hide();
         }
 
         private void RemoveMarkWindowOpen(object sender, RoutedEventArgs e)
@@ -263,10 +309,21 @@ namespace DeepReadApp
             if (_windowDelMark.ShowDialog() != true) return;
         }
 
+        private void LibraryWindowOpen(object sender, RoutedEventArgs e)
+        {
+            ScrollViewer scrollViewer = new ScrollViewer();
+            ImageBrush imageBrush = new ImageBrush(new BitmapImage(
+                new Uri(@"C:\\Users\\kiril\\OneDrive\\Рабочий стол\\rtedf.jpg", UriKind.Relative)));
+            scrollViewer.Content = _wrapPanel;
+            _windowLibrary.Content = scrollViewer;
+            if (_windowLibrary.ShowDialog() != true) return;
+        }
+
         private void RemoveMarkButton(object sender, RoutedEventArgs e)
         {
-            _listMarkPage.RemoveAt(Convert.ToInt32(_textBoxDelMark.Text));
-            _listMarkZoom.RemoveAt(Convert.ToInt32(_textBoxDelMark.Text));
+            MenuItem it = (MenuItem)sender;
+            _listMarkPage.RemoveAt(Convert.ToInt32(it.Tag));
+            _listMarkZoom.RemoveAt(Convert.ToInt32(it.Tag));
             var maxIndexMark = 0;
             while (_iniManager.GetPrivateString("MarkPosition", FileName + "/Pages/" + Convert.ToString(maxIndexMark)) != "")
             {
@@ -278,23 +335,27 @@ namespace DeepReadApp
                 _iniManager.WritePrivateString("MarkPosition", FileName + "/Pages/" + Convert.ToString(indexMark), null);
             }
             SaveMark();
-            /*for (var indexMark = 0; indexMark < _listMarkPage.Count; indexMark++)
-            {
-                _iniManager.WritePrivateString("MarkPosition", FileName + "/Zoom/" + Convert.ToString(indexMark),
-                    Convert.ToString(_listMarkZoom[indexMark]));
-                _iniManager.WritePrivateString("MarkPosition", FileName + "/Pages/" + Convert.ToString(indexMark),
-                    Convert.ToString(_listMarkPage[indexMark]));
-            }*/
             _panel.Children.Clear();
             for (var indexMark = 0; indexMark < _listMarkPage.Count; indexMark++)
             {
-                Button button = new Button() { Content = Convert.ToString(indexMark) + " : " + Convert.ToString(_listMarkPage[indexMark]),
+                Button button = new Button() { Content = Convert.ToString(indexMark + 1) + " Bookmark, " + Convert.ToString(_listMarkPage[indexMark]) + " Page",
                     Tag = Convert.ToString(indexMark)};
+                
+                ContextMenu contextMenu = new ContextMenu();
+                MenuItem menuItem = new MenuItem();
+                button.ContextMenu = contextMenu;
+                menuItem.Header = "Delete";
+                menuItem.Tag = Convert.ToString(indexMark);
+                menuItem.Click += RemoveMarkButton;
+                contextMenu.Items.Add(menuItem);
+                
                 button.Click += ClickMark;
                 _panel.Children.Add(button);
                 ChapterExpander.Content = _panel;
             }
         }
+        
+        
         
         private void SaveMark()
         {
@@ -334,8 +395,18 @@ namespace DeepReadApp
             {
                 _listMarkPage.Add(Convert.ToInt32(_iniManager.GetPrivateString("MarkPosition", FileName + "/Pages/" + Convert.ToString(indexMark))));
                 _listMarkZoom.Add(Convert.ToDouble(_iniManager.GetPrivateString("MarkPosition", FileName + "/Zoom/" + Convert.ToString(indexMark))));
-                Button button = new Button() { Content = Convert.ToString(indexMark) + " : " + Convert.ToString(_listMarkPage[indexMark]),
+                Button button = new Button() { Content = Convert.ToString(indexMark + 1) + " Bookmark, " + Convert.ToString(_listMarkPage[indexMark]) + " Page",
                     Tag = Convert.ToString(indexMark)};
+                
+                ContextMenu contextMenu = new ContextMenu();
+                MenuItem menuItem = new MenuItem();
+                button.ContextMenu = contextMenu;
+                menuItem.Header = "Delete";
+                menuItem.Tag = Convert.ToString(indexMark);
+                menuItem.Click += RemoveMarkButton;
+                contextMenu.Items.Add(menuItem);
+                
+                
                 button.Click += ClickMark;
                 _panel.Children.Add(button);
                 ChapterExpander.Content = _panel;
