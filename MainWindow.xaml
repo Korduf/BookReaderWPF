@@ -41,7 +41,7 @@
                 </LinearGradientBrush>
             </Rectangle.Fill>
         </Rectangle>
-            <FlowDocumentPageViewer x:Name="FlowView" Cursor="Arrow">
+            <FlowDocumentPageViewer Grid.Column="0" x:Name="FlowView" Cursor="Arrow">
                 <FlowDocument x:Name="FlowDoc" Cursor="Arrow"></FlowDocument>
             </FlowDocumentPageViewer>
             
@@ -58,8 +58,6 @@
             </MenuItem>
             <MenuItem Header="Mark" >
                 <MenuItem Header="New Mark" Click="AddMark"></MenuItem>
-                <!--<Separator />
-                <MenuItem Header="Remove Mark" Click="RemoveMarkWindowOpen"></MenuItem>-->
             </MenuItem>
             <MenuItem Header="Library" Click="LibraryWindowOpen" x:Name="MenuLibrary">
                 
